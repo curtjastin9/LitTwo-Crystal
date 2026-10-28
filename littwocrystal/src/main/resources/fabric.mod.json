@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"id": "littwocrystal",
+	"version": "${version}",
+	"name": "LitTwo Crystal",
+	"description": "Client-side | Beta\nLitTwo Crystal is an early beta end crystal optimizer from Dr_LitTwo, vibe-coded with help from Claude. Hold right click to place crystals fast and hold left click to break them just as fast. The speed is adjustable, and it only works while you're holding an end crystal.\nStatus: Beta, a work in progress.",
+	"authors": [
+		"Dr_LitTwo"
+	],
+	"contributors": [
+		"Claude (vibe coding help)"
+	],
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.littwocrystal.LitTwoCrystalClient"
+		]
+	},
+	"mixins": [
+		"littwocrystal.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"fabric-api": "*",
+		"minecraft": "~1.21.11",
+		"java": ">=21"
+	}
+}
