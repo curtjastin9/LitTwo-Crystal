@@ -28,6 +28,15 @@ jobs:
             exit 1
           fi
           cd "$(dirname "$SETTINGS")"
+          for i in 1 2 3; do
+            gradle build && exit 0
+            echo "Build attempt $i failed, retrying..."
+            sleep 20
+          done
+          exit 1
+          
+          fi
+          cd "$(dirname "$SETTINGS")"
           gradle build
 
       - name: Upload jar
