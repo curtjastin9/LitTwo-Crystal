@@ -9,11 +9,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
 public class LitTwoCrystalClient implements ClientModInitializer {
@@ -23,8 +25,9 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 	private static KeyMapping fasterKey;
 
 	private static boolean welcomed = false;
-	/** Ticks left before the next crystal may be broken. */
-	private static int breakCooldown = 0;
+
+	/** Set by the mixin when vanilla already sent a place this tick, so we never double up. */
+	public static boolean placedThisTick = false;
 
 	@Override
 	public void onInitializeClient() {
@@ -85,21 +88,41 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 			announce(client);
 		}
 
-		// Fast breaking: hold left click while holding a crystal and looking at a crystal.
-		if (breakCooldown > 0) {
-			breakCooldown--;
+		extraPlace(client, player);
+		placedThisTick = false;
+	}
+
+	/**
+	 * Second placement chance each tick. Vanilla places at the start of the tick; if it did not
+	 * (for example the crystal under the cursor had only just been broken), place again now
+	 * instead of waiting a whole tick. Uses the normal useItemOn path, so the server gets the
+	 * regular use-item packet and sequence number and registers it like any other placement.
+	 * The ray ignores entities, so a crystal standing on the block does not block the aim.
+	 */
+	private static void extraPlace(Minecraft client, LocalPlayer player) {
+		if (placedThisTick || LitTwoCrystalConfig.delay != 0) {
+			return;
 		}
 		if (player == null || client.gameMode == null || client.level == null || client.screen != null) {
 			return;
 		}
-		if (breakCooldown > 0 || !active(player) || !client.options.keyAttack.isDown()) {
+		if (!client.options.keyUse.isDown() || player.isUsingItem() || !active(player)) {
 			return;
 		}
-		HitResult hit = client.hitResult;
-		if (hit instanceof EntityHitResult entityHit && entityHit.getEntity() instanceof EndCrystal crystal) {
-			client.gameMode.attack(player, crystal);
-			player.swing(InteractionHand.MAIN_HAND);
-			breakCooldown = LitTwoCrystalConfig.delay;
+		HitResult hit = player.pick(player.blockInteractionRange(), 1.0F, false);
+		if (!(hit instanceof BlockHitResult blockHit) || hit.getType() != HitResult.Type.BLOCK) {
+			return;
+		}
+		BlockPos pos = blockHit.getBlockPos();
+		if (!client.level.getBlockState(pos).is(Blocks.OBSIDIAN)
+			&& !client.level.getBlockState(pos).is(Blocks.BEDROCK)) {
+			return;
+		}
+		InteractionHand hand = player.getMainHandItem().is(Items.END_CRYSTAL)
+			? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+		InteractionResult result = client.gameMode.useItemOn(player, hand, blockHit);
+		if (result.consumesAction()) {
+			player.swing(hand);
 		}
 	}
 
@@ -108,7 +131,7 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 			return;
 		}
 		String text = "[LitTwo Crystal] " + (LitTwoCrystalConfig.enabled ? "ON" : "OFF")
-			+ "  |  delay " + LitTwoCrystalConfig.delay
+			+ "  |  place delay " + LitTwoCrystalConfig.delay
 			+ " tick" + (LitTwoCrystalConfig.delay == 1 ? "" : "s")
 			+ " (0 = fastest, " + LitTwoCrystalConfig.MAX_DELAY + " = slowest)";
 		client.player.displayClientMessage(Component.literal(text), false);

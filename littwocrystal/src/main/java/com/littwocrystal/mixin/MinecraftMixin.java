@@ -56,7 +56,9 @@ public abstract class MinecraftMixin {
 	}
 
 	/**
-	 * Fast placing: after each right click, wait only the configured number of ticks.
+	 * Fast placing: after each right click, wait only the configured number of ticks
+	 * (0 = place again on the very next tick while right click is held). Spamming right click
+	 * is also never throttled, because vanilla handles every queued click each tick.
 	 * Only while an end crystal is the item in use, so everything else stays vanilla.
 	 */
 	@Inject(method = "startUseItem", at = @At("RETURN"))
@@ -65,6 +67,7 @@ public abstract class MinecraftMixin {
 		LocalPlayer player = mc.player;
 		if (player != null && LitTwoCrystalClient.active(player)) {
 			this.rightClickDelay = LitTwoCrystalConfig.delay;
+			LitTwoCrystalClient.placedThisTick = true;
 		}
 	}
 }
