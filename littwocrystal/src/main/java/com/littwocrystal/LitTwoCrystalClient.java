@@ -12,9 +12,11 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
@@ -28,6 +30,21 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 
 	/** Set by the mixin when vanilla already sent a place this tick, so we never double up. */
 	public static boolean placedThisTick = false;
+
+	/**
+	 * Whether a crystal place on this obsidian/bedrock block can succeed. The mod only places when
+	 * your client sees the spot free (air above, no crystal there), so what you see always matches
+	 * what the server has. It never places "ahead" of the server, which is what causes ghost
+	 * crystals you cannot explode.
+	 */
+	public static boolean canPlaceAt(Minecraft client, BlockPos pos) {
+		if (client.level == null) {
+			return false;
+		}
+		BlockPos above = pos.above();
+		return client.level.isEmptyBlock(above)
+			&& client.level.getEntitiesOfClass(EndCrystal.class, new AABB(above)).isEmpty();
+	}
 
 	@Override
 	public void onInitializeClient() {
@@ -72,8 +89,15 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 				"[LitTwo Crystal] loaded.  ; = on/off   , = slower   . = faster"), false);
 		}
 
+		// One press = one flip. Extra queued presses (key mashing, lag spikes) are drained so a
+		// single tap can never flip it twice and look like it did nothing.
+		boolean toggled = false;
 		while (toggleKey.consumeClick()) {
+			toggled = true;
+		}
+		if (toggled) {
 			LitTwoCrystalConfig.enabled = !LitTwoCrystalConfig.enabled;
+			placedThisTick = false;
 			LitTwoCrystalConfig.save();
 			announce(client);
 		}
@@ -118,6 +142,9 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 			&& !client.level.getBlockState(pos).is(Blocks.BEDROCK)) {
 			return;
 		}
+		if (!canPlaceAt(client, pos)) {
+			return;
+		}
 		InteractionHand hand = player.getMainHandItem().is(Items.END_CRYSTAL)
 			? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
 		InteractionResult result = client.gameMode.useItemOn(player, hand, blockHit);
@@ -130,7 +157,7 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 		if (client.player == null) {
 			return;
 		}
-		String text = "[LitTwo Crystal] " + (LitTwoCrystalConfig.enabled ? "ON" : "OFF")
+		String text = "[LitTwo Crystal] " + (LitTwoCrystalConfig.enabled ? "ON (works while holding a crystal)" : "OFF (vanilla)")
 			+ "  |  place delay " + LitTwoCrystalConfig.delay
 			+ " tick" + (LitTwoCrystalConfig.delay == 1 ? "" : "s")
 			+ " (0 = fastest, " + LitTwoCrystalConfig.MAX_DELAY + " = slowest)";

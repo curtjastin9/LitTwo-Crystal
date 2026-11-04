@@ -4,6 +4,9 @@ import com.littwocrystal.LitTwoCrystalClient;
 import com.littwocrystal.LitTwoCrystalConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -32,6 +35,28 @@ public abstract class MinecraftMixin {
 			&& LitTwoCrystalClient.active(player)
 			&& hit != null
 			&& hit.getType() == HitResult.Type.BLOCK;
+	}
+
+	/**
+	 * Right click that cannot place anything is not sent at all: aiming at a crystal (vanilla would
+	 * just send useless interact packets) or at a block that already has a crystal on it.
+	 */
+	@Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
+	private void littwocrystal$skipUseless(CallbackInfo ci) {
+		Minecraft mc = (Minecraft) (Object) this;
+		LocalPlayer player = mc.player;
+		if (player == null || !LitTwoCrystalClient.active(player) || mc.hitResult == null) {
+			return;
+		}
+		if (mc.hitResult instanceof EntityHitResult e && e.getEntity() instanceof EndCrystal) {
+			ci.cancel();
+		} else if (mc.hitResult instanceof BlockHitResult b && mc.hitResult.getType() == HitResult.Type.BLOCK
+			&& mc.level != null
+			&& (mc.level.getBlockState(b.getBlockPos()).is(net.minecraft.world.level.block.Blocks.OBSIDIAN)
+				|| mc.level.getBlockState(b.getBlockPos()).is(net.minecraft.world.level.block.Blocks.BEDROCK))
+			&& !LitTwoCrystalClient.canPlaceAt(mc, b.getBlockPos())) {
+			ci.cancel();
+		}
 	}
 
 	/** A single left click on a block: do not start mining it. Clicks on crystals are untouched. */
