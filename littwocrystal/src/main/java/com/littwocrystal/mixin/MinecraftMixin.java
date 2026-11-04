@@ -37,6 +37,14 @@ public abstract class MinecraftMixin {
 			&& hit.getType() == HitResult.Type.BLOCK;
 	}
 
+	/** Tells the client class that vanilla already handled a left click this tick. */
+	@Inject(method = "startAttack", at = @At("RETURN"))
+	private void littwocrystal$attackHandled(CallbackInfoReturnable<Boolean> cir) {
+		if (Boolean.TRUE.equals(cir.getReturnValue())) {
+			LitTwoCrystalClient.attackedThisTick = true;
+		}
+	}
+
 	/**
 	 * Right click that cannot place anything is not sent at all: aiming at a crystal (vanilla would
 	 * just send useless interact packets) or at a block that already has a crystal on it.

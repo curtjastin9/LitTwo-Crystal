@@ -14,6 +14,9 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.Vec3;
+import java.util.Optional;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
@@ -30,6 +33,10 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 
 	/** Set by the mixin when vanilla already sent a place this tick, so we never double up. */
 	public static boolean placedThisTick = false;
+
+	/** Set by the mixin when vanilla already handled a left click this tick. */
+	public static boolean attackedThisTick = false;
+	private static boolean attackWasDown = false;
 
 	/**
 	 * Whether a crystal place on this obsidian/bedrock block can succeed. The mod only places when
@@ -112,8 +119,56 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 			announce(client);
 		}
 
+		extraBreak(client, player);
 		extraPlace(client, player);
 		placedThisTick = false;
+		attackedThisTick = false;
+	}
+
+	/**
+	 * Safety net for exploding: each fresh left click while holding a crystal, if vanilla did not
+	 * hit anything this tick but a crystal is in reach and in line of sight, hit it. This is a
+	 * normal attack (same packet as a vanilla click), so the server registers it. It guarantees
+	 * you can always explode a crystal while holding one, and spamming left click stays fast.
+	 */
+	private static void extraBreak(Minecraft client, LocalPlayer player) {
+		boolean down = client.options.keyAttack.isDown();
+		boolean fresh = down && !attackWasDown;
+		attackWasDown = down;
+		if (!fresh || attackedThisTick) {
+			return;
+		}
+		if (player == null || client.gameMode == null || client.level == null || client.screen != null
+			|| !active(player)) {
+			return;
+		}
+		double reach = player.entityInteractionRange();
+		Vec3 eye = player.getEyePosition();
+		Vec3 look = player.getViewVector(1.0F);
+		Vec3 end = eye.add(look.scale(reach));
+		EndCrystal best = null;
+		double bestDist = Double.MAX_VALUE;
+		for (EndCrystal crystal : client.level.getEntitiesOfClass(EndCrystal.class,
+			player.getBoundingBox().expandTowards(look.scale(reach)).inflate(1.0))) {
+			Optional<Vec3> point = crystal.getBoundingBox().clip(eye, end);
+			if (point.isPresent()) {
+				double d = eye.distanceToSqr(point.get());
+				if (d < bestDist) {
+					bestDist = d;
+					best = crystal;
+				}
+			}
+		}
+		if (best == null) {
+			return;
+		}
+		HitResult wall = client.level.clip(new ClipContext(eye, end,
+			ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+		if (wall.getType() == HitResult.Type.BLOCK && eye.distanceToSqr(wall.getLocation()) < bestDist) {
+			return;
+		}
+		client.gameMode.attack(player, best);
+		player.swing(InteractionHand.MAIN_HAND);
 	}
 
 	/**
