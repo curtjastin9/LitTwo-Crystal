@@ -7,7 +7,9 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
@@ -92,8 +94,10 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 
 		if (!welcomed && player != null) {
 			welcomed = true;
-			player.displayClientMessage(Component.literal(
-				"[LitTwo Crystal] loaded.  ; = on/off   , = slower   . = faster"), false);
+			player.displayClientMessage(tag().append(divider())
+				.append(Component.literal("Loaded").withStyle(ChatFormatting.GREEN))
+				.append(divider())
+				.append(Component.literal("; toggle   , slower   . faster").withStyle(ChatFormatting.GRAY)), false);
 		}
 
 		// One press = one flip. Extra queued presses (key mashing, lag spikes) are drained so a
@@ -208,15 +212,37 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 		}
 	}
 
+	/** "◆ LitTwo Crystal" tag shared by every message. */
+	private static MutableComponent tag() {
+		return Component.literal("\u25C6 ").withStyle(ChatFormatting.AQUA)
+			.append(Component.literal("LitTwo Crystal").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+	}
+
+	private static MutableComponent divider() {
+		return Component.literal("  \u2502  ").withStyle(ChatFormatting.DARK_GRAY);
+	}
+
+	private static MutableComponent statusPart() {
+		boolean on = LitTwoCrystalConfig.enabled;
+		return Component.literal(on ? "\u25CF ON" : "\u25CB OFF")
+			.withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED, ChatFormatting.BOLD);
+	}
+
+	private static MutableComponent delayPart() {
+		int d = LitTwoCrystalConfig.delay;
+		String speed = d == 0 ? "MAX" : d + (d == 1 ? " tick" : " ticks");
+		return Component.literal("Speed ").withStyle(ChatFormatting.GRAY)
+			.append(Component.literal(speed).withStyle(d == 0 ? ChatFormatting.GOLD : ChatFormatting.YELLOW,
+				ChatFormatting.BOLD));
+	}
+
 	private static void announce(Minecraft client) {
 		if (client.player == null) {
 			return;
 		}
-		String text = "[LitTwo Crystal] " + (LitTwoCrystalConfig.enabled ? "ON (works while holding a crystal)" : "OFF (vanilla)")
-			+ "  |  place delay " + LitTwoCrystalConfig.delay
-			+ " tick" + (LitTwoCrystalConfig.delay == 1 ? "" : "s")
-			+ " (0 = fastest, " + LitTwoCrystalConfig.MAX_DELAY + " = slowest)";
-		client.player.displayClientMessage(Component.literal(text), false);
-		client.player.displayClientMessage(Component.literal(text), true);
+		MutableComponent message = tag().append(divider()).append(statusPart())
+			.append(divider()).append(delayPart());
+		client.player.displayClientMessage(message, false);
+		client.player.displayClientMessage(message, true);
 	}
 }
