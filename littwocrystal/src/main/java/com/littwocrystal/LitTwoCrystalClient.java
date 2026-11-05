@@ -129,23 +129,48 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 		attackedThisTick = false;
 	}
 
+	/** How many ticks a left click is remembered while waiting for a crystal to appear. */
+	private static final int BREAK_BUFFER_TICKS = 4;
+	private static int breakBuffer = 0;
+
 	/**
-	 * Safety net for exploding: each fresh left click while holding a crystal, if vanilla did not
-	 * hit anything this tick but a crystal is in reach and in line of sight, hit it. This is a
-	 * normal attack (same packet as a vanilla click), so the server registers it. It guarantees
-	 * you can always explode a crystal while holding one, and spamming left click stays fast.
+	 * Breaking: one hit per click, never more, so low CPS works as well as fast CPS.
+	 *  - Safety net: if vanilla did not hit a crystal you are aiming at, hit it.
+	 *  - Click buffer: a click made a moment before the crystal exists (just placed, server has not
+	 *    told your client yet) is kept for a few ticks and fires the instant the crystal is there.
+	 * Every hit is a normal attack (same packet as a vanilla click), so the server registers it.
 	 */
 	private static void extraBreak(Minecraft client, LocalPlayer player) {
 		boolean down = client.options.keyAttack.isDown();
 		boolean fresh = down && !attackWasDown;
 		attackWasDown = down;
-		if (!fresh || attackedThisTick) {
-			return;
-		}
+
 		if (player == null || client.gameMode == null || client.level == null || client.screen != null
 			|| !active(player)) {
+			breakBuffer = 0;
 			return;
 		}
+		if (attackedThisTick) {
+			breakBuffer = 0;
+			return;
+		}
+		if (fresh) {
+			breakBuffer = BREAK_BUFFER_TICKS;
+		} else if (breakBuffer > 0) {
+			breakBuffer--;
+		} else {
+			return;
+		}
+		EndCrystal target = crystalInReach(client, player);
+		if (target != null) {
+			client.gameMode.attack(player, target);
+			player.swing(InteractionHand.MAIN_HAND);
+			breakBuffer = 0;
+		}
+	}
+
+	/** Nearest crystal under the crosshair, within reach and not behind a block; otherwise null. */
+	private static EndCrystal crystalInReach(Minecraft client, LocalPlayer player) {
 		double reach = player.entityInteractionRange();
 		Vec3 eye = player.getEyePosition();
 		Vec3 look = player.getViewVector(1.0F);
@@ -164,15 +189,14 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 			}
 		}
 		if (best == null) {
-			return;
+			return null;
 		}
 		HitResult wall = client.level.clip(new ClipContext(eye, end,
 			ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
 		if (wall.getType() == HitResult.Type.BLOCK && eye.distanceToSqr(wall.getLocation()) < bestDist) {
-			return;
+			return null;
 		}
-		client.gameMode.attack(player, best);
-		player.swing(InteractionHand.MAIN_HAND);
+		return best;
 	}
 
 	/**
