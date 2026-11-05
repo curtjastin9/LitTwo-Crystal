@@ -15,15 +15,9 @@ public final class LitTwoCrystalConfig {
 	/** Slowest setting. 0 = every tick (fastest). */
 	public static final int MAX_DELAY = 10;
 
-	/**
-	 * Bumped when the default speed changes. Configs saved by an older version are reset to the
-	 * new default once, so an old slow value (the previous default was 2) is not kept forever.
-	 */
-	private static final int CONFIG_VERSION = 2;
-
 	public static boolean enabled = true;
-	/** Ticks to wait between placing crystals. 0 = every tick (20 per second), the fastest possible. */
-	public static int delay = 0;
+	/** Ticks to wait between placing / breaking crystals. 20 ticks = 1 second. */
+	public static int delay = 2;
 
 	private LitTwoCrystalConfig() {
 	}
@@ -38,35 +32,23 @@ public final class LitTwoCrystalConfig {
 			save();
 			return;
 		}
-		boolean upgraded = false;
 		try (Reader reader = Files.newBufferedReader(path)) {
 			Properties props = new Properties();
 			props.load(reader);
 			enabled = Boolean.parseBoolean(props.getProperty("enabled", "true"));
-			int version = Integer.parseInt(props.getProperty("version", "1").trim());
-			if (version < CONFIG_VERSION) {
-				delay = 0;
-				upgraded = true;
-			} else {
-				delay = clamp(Integer.parseInt(props.getProperty("delay", "0").trim()));
-			}
+			delay = clamp(Integer.parseInt(props.getProperty("delay", "2").trim()));
 		} catch (IOException | NumberFormatException e) {
 			enabled = true;
-			delay = 0;
-			upgraded = true;
-		}
-		if (upgraded) {
-			save();
+			delay = 2;
 		}
 	}
 
 	public static void save() {
 		Properties props = new Properties();
-		props.setProperty("version", Integer.toString(CONFIG_VERSION));
 		props.setProperty("enabled", Boolean.toString(enabled));
 		props.setProperty("delay", Integer.toString(delay));
 		try (Writer writer = Files.newBufferedWriter(file())) {
-			props.store(writer, "LitTwo Crystal. delay: 0 (fastest) to " + MAX_DELAY + " ticks between placed crystals");
+			props.store(writer, "LitTwo Crystal. delay: 0 (fastest) to " + MAX_DELAY + " ticks between actions");
 		} catch (IOException ignored) {
 		}
 	}

@@ -4,9 +4,6 @@ import com.littwocrystal.LitTwoCrystalClient;
 import com.littwocrystal.LitTwoCrystalConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -37,36 +34,6 @@ public abstract class MinecraftMixin {
 			&& hit.getType() == HitResult.Type.BLOCK;
 	}
 
-	/** Tells the client class that vanilla already handled a left click this tick. */
-	@Inject(method = "startAttack", at = @At("RETURN"))
-	private void littwocrystal$attackHandled(CallbackInfoReturnable<Boolean> cir) {
-		if (Boolean.TRUE.equals(cir.getReturnValue())) {
-			LitTwoCrystalClient.attackedThisTick = true;
-		}
-	}
-
-	/**
-	 * Right click that cannot place anything is not sent at all: aiming at a crystal (vanilla would
-	 * just send useless interact packets) or at a block that already has a crystal on it.
-	 */
-	@Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
-	private void littwocrystal$skipUseless(CallbackInfo ci) {
-		Minecraft mc = (Minecraft) (Object) this;
-		LocalPlayer player = mc.player;
-		if (player == null || !LitTwoCrystalClient.active(player) || mc.hitResult == null) {
-			return;
-		}
-		if (mc.hitResult instanceof EntityHitResult e && e.getEntity() instanceof EndCrystal) {
-			ci.cancel();
-		} else if (mc.hitResult instanceof BlockHitResult b && mc.hitResult.getType() == HitResult.Type.BLOCK
-			&& mc.level != null
-			&& (mc.level.getBlockState(b.getBlockPos()).is(net.minecraft.world.level.block.Blocks.OBSIDIAN)
-				|| mc.level.getBlockState(b.getBlockPos()).is(net.minecraft.world.level.block.Blocks.BEDROCK))
-			&& !LitTwoCrystalClient.canPlaceAt(mc, b.getBlockPos())) {
-			ci.cancel();
-		}
-	}
-
 	/** A single left click on a block: do not start mining it. Clicks on crystals are untouched. */
 	@Inject(method = "startAttack", at = @At("HEAD"), cancellable = true)
 	private void littwocrystal$noMineOnClick(CallbackInfoReturnable<Boolean> cir) {
@@ -89,9 +56,7 @@ public abstract class MinecraftMixin {
 	}
 
 	/**
-	 * Fast placing: after each right click, wait only the configured number of ticks
-	 * (0 = place again on the very next tick while right click is held). Spamming right click
-	 * is also never throttled, because vanilla handles every queued click each tick.
+	 * Fast placing: after each right click, wait only the configured number of ticks.
 	 * Only while an end crystal is the item in use, so everything else stays vanilla.
 	 */
 	@Inject(method = "startUseItem", at = @At("RETURN"))
@@ -100,7 +65,6 @@ public abstract class MinecraftMixin {
 		LocalPlayer player = mc.player;
 		if (player != null && LitTwoCrystalClient.active(player)) {
 			this.rightClickDelay = LitTwoCrystalConfig.delay;
-			LitTwoCrystalClient.placedThisTick = true;
 		}
 	}
 }
