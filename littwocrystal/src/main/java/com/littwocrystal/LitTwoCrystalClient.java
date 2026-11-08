@@ -11,6 +11,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
+import com.littwocrystal.vanilla.KeptCrystals;
+import com.littwocrystal.vanilla.VanillaMode;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -111,7 +113,8 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 	 * in the main hand, or in the offhand when the main hand is empty.
 	 */
 	public static boolean active(LocalPlayer player) {
-		if (!LitTwoCrystalConfig.enabled) {
+		// Vanilla Mode (setting 5) leaves clicking and timing to vanilla; see the vanilla package.
+		if (!LitTwoCrystalConfig.enabled || LitTwoCrystalConfig.isVanilla()) {
 			return false;
 		}
 		ItemStack main = player.getMainHandItem();
@@ -124,6 +127,9 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 	private static void onTick(Minecraft client) {
 		LocalPlayer player = client.player;
 		tickCounter++;
+		if (client.level != null && !client.isPaused()) {
+			KeptCrystals.ticked();
+		}
 		if (tickCounter % 40 == 0) {
 			brokenCrystals.values().removeIf(until -> until < tickCounter);
 		}
@@ -157,6 +163,10 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 			LitTwoCrystalConfig.delay = LitTwoCrystalConfig.clamp(LitTwoCrystalConfig.delay - 1);
 			LitTwoCrystalConfig.save();
 			announce(client);
+		}
+
+		if (!VanillaMode.enabled()) {
+			KeptCrystals.clear();
 		}
 
 		extraBreak(client, player);
@@ -291,6 +301,10 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 
 	private static MutableComponent delayPart() {
 		int d = LitTwoCrystalConfig.delay;
+		if (LitTwoCrystalConfig.isVanilla()) {
+			return Component.literal("Speed ").withStyle(ChatFormatting.GRAY)
+				.append(Component.literal("Vanilla Mode").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD));
+		}
 		String speed = d == 0 ? "MAX" : d + (d == 1 ? " tick" : " ticks");
 		return Component.literal("Speed ").withStyle(ChatFormatting.GRAY)
 			.append(Component.literal(speed).withStyle(d == 0 ? ChatFormatting.GOLD : ChatFormatting.YELLOW,

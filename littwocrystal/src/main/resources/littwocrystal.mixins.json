@@ -3,7 +3,11 @@
 	"package": "com.littwocrystal.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"MinecraftMixin"
+		"ClientLevelMixin",
+		"EndCrystalItemMixin",
+		"EndCrystalMixin",
+		"MinecraftMixin",
+		"MultiPlayerGameModeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

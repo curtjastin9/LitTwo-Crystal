@@ -2,6 +2,7 @@ package com.littwocrystal.mixin;
 
 import com.littwocrystal.LitTwoCrystalClient;
 import com.littwocrystal.LitTwoCrystalConfig;
+import com.littwocrystal.vanilla.VanillaMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
@@ -43,6 +44,7 @@ public abstract class MinecraftMixin {
 	 */
 	@Inject(method = "startAttack", at = @At("RETURN"))
 	private void littwocrystal$attackHandled(CallbackInfoReturnable<Boolean> cir) {
+		VanillaMode.clickEnded((Minecraft) (Object) this);
 		if (Boolean.TRUE.equals(cir.getReturnValue())) {
 			LitTwoCrystalClient.attackedThisTick = true;
 			Minecraft mc = (Minecraft) (Object) this;
@@ -57,6 +59,11 @@ public abstract class MinecraftMixin {
 	 * Right click that cannot place anything is not sent at all: aiming at a crystal (vanilla would
 	 * just send useless interact packets) or at a block that already has a crystal on it.
 	 */
+	@Inject(method = "startUseItem", at = @At("HEAD"))
+	private void littwocrystal$vanillaAimUse(CallbackInfo ci) {
+		VanillaMode.useStarted((Minecraft) (Object) this);
+	}
+
 	@Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
 	private void littwocrystal$skipUseless(CallbackInfo ci) {
 		Minecraft mc = (Minecraft) (Object) this;
@@ -76,6 +83,11 @@ public abstract class MinecraftMixin {
 	}
 
 	/** A single left click on a block: do not start mining it. Clicks on crystals are untouched. */
+	@Inject(method = "startAttack", at = @At("HEAD"))
+	private void littwocrystal$vanillaAimAttack(CallbackInfoReturnable<Boolean> cir) {
+		VanillaMode.attackStarted((Minecraft) (Object) this);
+	}
+
 	@Inject(method = "startAttack", at = @At("HEAD"), cancellable = true)
 	private void littwocrystal$noMineOnClick(CallbackInfoReturnable<Boolean> cir) {
 		if (littwocrystal$aimingAtBlock()) {
@@ -104,6 +116,7 @@ public abstract class MinecraftMixin {
 	 */
 	@Inject(method = "startUseItem", at = @At("RETURN"))
 	private void littwocrystal$setDelay(CallbackInfo ci) {
+		VanillaMode.clickEnded((Minecraft) (Object) this);
 		Minecraft mc = (Minecraft) (Object) this;
 		LocalPlayer player = mc.player;
 		if (player != null && LitTwoCrystalClient.active(player)) {
