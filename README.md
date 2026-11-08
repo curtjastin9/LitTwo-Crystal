@@ -9,7 +9,8 @@ LitTwo Crystal Optimizer is a Minecraft optimization mod designed to make End Cr
 ## Features
 
 - Faster End Crystal placement
-- Adjustable crystal placement speed
+- Adjustable crystal placement speed (0-4 ticks between actions)
+- **Vanilla Mode** (speed setting 5): works like Marlow's Crystal Optimizer. No timing changes, no extra clicks; a crystal you just hit is treated as already gone, so your next click places on or hits what is behind it
 - Optimized crystal placement behavior
 - Improved combat responsiveness
 - Customizable toggle and speed keybinds
@@ -19,7 +20,7 @@ LitTwo Crystal Optimizer is a Minecraft optimization mod designed to make End Cr
 | Key | Action |
 | --- | --- |
 | `;` | Toggle on / off |
-| `,` | Slower (more delay) |
+| `,` | Slower (more delay), up to Vanilla Mode |
 | `.` | Faster (less delay) |
 
 ## Status

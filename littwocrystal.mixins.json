@@ -1,0 +1,15 @@
+{
+	"required": true,
+	"package": "com.littwocrystal.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"ClientLevelMixin",
+		"EndCrystalItemMixin",
+		"EndCrystalMixin",
+		"MinecraftMixin",
+		"MultiPlayerGameModeMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
