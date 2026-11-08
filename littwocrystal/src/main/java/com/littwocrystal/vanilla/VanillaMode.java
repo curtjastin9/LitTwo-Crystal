@@ -104,12 +104,9 @@ public final class VanillaMode {
 		mc.hitResult = replacement;
 	}
 
-	/** Same rule the mod uses elsewhere: a crystal in the main hand, or in the offhand with an empty main hand. */
+	/** Like Marlow: a crystal in either hand counts (main-hand sword + offhand crystal is the usual setup). */
 	private static boolean holdingCrystal(LocalPlayer player) {
-		if (player.getMainHandItem().is(Items.END_CRYSTAL)) {
-			return true;
-		}
-		return player.getMainHandItem().isEmpty() && player.getOffhandItem().is(Items.END_CRYSTAL);
+		return player.getMainHandItem().is(Items.END_CRYSTAL) || player.getOffhandItem().is(Items.END_CRYSTAL);
 	}
 
 	/**
