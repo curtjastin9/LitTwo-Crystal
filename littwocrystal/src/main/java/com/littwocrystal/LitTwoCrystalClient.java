@@ -169,10 +169,17 @@ public class LitTwoCrystalClient implements ClientModInitializer {
 			KeptCrystals.clear();
 		}
 
-		extraBreak(client, player);
-		extraPlace(client, player);
+		// extraBreak / extraPlace no longer run here: this is after the tick's movement packet.
+		// They run from MinecraftMixin at the tail of handleKeybinds (see runExtras).
 		placedThisTick = false;
 		attackedThisTick = false;
+	}
+
+	/** Called from MinecraftMixin at the tail of handleKeybinds, so packets leave in vanilla's slot. */
+	public static void runExtras(Minecraft client) {
+		LocalPlayer player = client.player;
+		extraBreak(client, player);
+		extraPlace(client, player);
 	}
 
 	/** How many ticks a left click is remembered while waiting for a crystal to appear. */
