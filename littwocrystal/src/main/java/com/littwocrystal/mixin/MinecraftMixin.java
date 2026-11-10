@@ -39,6 +39,15 @@ public abstract class MinecraftMixin {
 	}
 
 	/**
+	 * Extra break/place chances run at the end of vanilla's own click handling, i.e. before the
+	 * tick's movement packet, exactly where vanilla clicks are sent. Never after it.
+	 */
+	@Inject(method = "handleKeybinds", at = @At("TAIL"))
+	private void littwocrystal$extraActions(CallbackInfo ci) {
+		LitTwoCrystalClient.runExtras((Minecraft) (Object) this);
+	}
+
+	/**
 	 * Tells the client class that vanilla already handled a left click this tick, and remembers
 	 * a crystal that click hit so the next place does not wait for the server to remove it.
 	 */
